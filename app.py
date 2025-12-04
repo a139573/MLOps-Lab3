@@ -12,9 +12,9 @@ def predict_animal(image_path):
     
     try:
         # Prepare the image file to send
-        with open(image_path, "rb") as f:
-            files = {"file": f}
-            response = requests.post(f"{RENDER_API_URL}/predict", files=files)
+        with open(image_path, "rb") as im:
+            images = {"img": im}
+            response = requests.post(f"{RENDER_API_URL}/predict", files=images)
         
         if response.status_code == 200:
             result = response.json()

@@ -26,7 +26,7 @@ async def predict(img: UploadFile = File(...)):
     image_bytes = await img.read()
     
     result = predict_img_class(image_bytes)
-    return {"result": result}
+    return {"class_name": result}
 
 @app.post("/resize")
 async def resize(img: UploadFile = File(...), width: int = Form(...), height: int = Form(...)):

@@ -17,7 +17,7 @@ COPY pyproject.toml uv.lock* README.md ./
 # Copy your ACTUAL source code
 COPY mylib ./mylib
 COPY main.py .
-COPY templates .
+COPY templates ./templates
 
 # Install dependencies
 RUN uv pip install --system --no-cache .

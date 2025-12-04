@@ -1,5 +1,3 @@
-# MLOps-Lab2
-Continuous Integration using GitHub Actions
 ---
 title: Image Classification
 emoji: 💻
@@ -13,4 +11,5 @@ license: mit
 short_description: MLOps Image Classification Project
 ---
 
-Check out the configuration reference at https://huggingface.co/docs/hub/spaces-config-reference
+# MLOps-Lab2
+Continuous Integration using GitHub Actions

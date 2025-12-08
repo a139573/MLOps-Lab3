@@ -1,0 +1,24 @@
+# Python compile artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Git metadata
+.git/
+
+# Environments
+.venv/
+venv/
+.env
+
+# Testing & Logs
+.coverage
+htmlcov/
+.pytest_cache/
+*.log
+tests/
+
+# MLOps specifics
+.cache/
+uv.lock

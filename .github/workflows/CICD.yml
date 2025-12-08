@@ -1,0 +1,79 @@
+name: CICD
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  # JOB 1: Deploy Backend to Render (from 'main' branch)
+  deploy-render:
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/mlops-lab2:latest
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 1. Setup Docker tools
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 2. Login to Docker Hub
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 3. Build and Push
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ env.DOCKER_IMAGE }}
+          cache-from: type=registry,ref=${{ env.DOCKER_IMAGE }}
+          cache-to: type=inline
+
+      # 4. Trigger Render Deploy
+      # REPLACE 'srv-xxxxx' WITH YOUR ACTUAL SERVICE ID from the Render Deploy Hook URL
+      - name: Trigger Render Deploy
+        run: curl -X POST "https://api.render.com/deploy/srv-d4ko180gjchc73aa3vs0?key=${{ secrets.RENDER_DEPLOY_HOOK_KEY }}"
+
+  # JOB 2: Deploy Frontend to Hugging Face (From 'hf-space' branch)
+  deploy-hf:
+    needs: deploy-render
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository (Fetch all branches)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      # 1. Switch to the 'hf-space' branch
+      - name: Switch to hf-space branch
+        run: |
+          git fetch origin hf-space
+          git checkout hf-space
+
+      # 2. Add Hugging Face Remote
+      - name: Add Hugging Face remote
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_USERNAME: ${{ secrets.HF_USERNAME }}
+        run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+          # Careful with the URL syntax here
+          git remote add huggingface https://${HF_USERNAME}:${HF_TOKEN}@huggingface.co/spaces/${HF_USERNAME}/image_classification.git
+
+      # 3. Push 'hf-space' content to Hugging Face's 'main'
+      - name: Push hf-space branch to Hugging Face
+        run: git push huggingface hf-space:main --force

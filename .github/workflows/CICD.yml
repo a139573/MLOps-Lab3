@@ -10,7 +10,7 @@ jobs:
   deploy-render:
     runs-on: ubuntu-latest
     env:
-      DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/mlops-lab2:latest
+      DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/mlops-lab3:latest
       
     steps:
       - name: Checkout repository

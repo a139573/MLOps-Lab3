@@ -1,9 +1,9 @@
 [project]
-name = "mlops-lab2"
+name = "mlops-lab3"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
     "black>=25.11.0",
     "click>=8.3.1",
@@ -15,7 +15,16 @@ dependencies = [
     "pytest>=9.0.1",
     "pytest-cov>=7.0.0",
     "uvicorn>=0.38.0",
-    "python-multipart"
+    "python-multipart",
+    "torch",
+    "torchvision",
+    "mlflow",
+    "prometheus_client",
+    "onnx",
+    "onnxscript",
+    "onnxruntime",
+    "matplotlib",
+    "numpy"
 ]
 
 [tool.setuptools]

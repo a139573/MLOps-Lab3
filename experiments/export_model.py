@@ -6,7 +6,7 @@ from mlflow.tracking import MlflowClient
 
 # --- CONFIGURATION ---
 EXPERIMENT_NAME = "Oxford_Pets_Transfer_Learning"
-EXPORT_DIR = "production_models"  # Where we save the files for the app
+EXPORT_DIR = "production_models"
 ONNX_MODEL_NAME = "model.onnx"
 JSON_LABELS_NAME = "class_labels.json"
 
@@ -61,7 +61,7 @@ def export_best_model():
     # Prepare for ONNX Export
     # Render is CPU-only, so we ensure the model is on CPU
     model.to("cpu")
-    model.eval() # Set to evaluation mode (disable dropout, etc.)
+    model.eval()
 
     # 7. Serialize to ONNX
     print(f"Exporting model to ONNX format (Opset 18)...")

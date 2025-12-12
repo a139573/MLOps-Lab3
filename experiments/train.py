@@ -176,17 +176,21 @@ def train_model():
 
         # --- 5. LOGGING ARTIFACTS ---
         # Plot Loss Curve
-        plt.figure()
+        fig = plt.figure()
         plt.plot(train_loss_history, label='Train Loss')
         plt.plot(val_loss_history, label='Val Loss')
         plt.legend()
         plt.title('Loss Curve')
-        plt.savefig("loss_curve.png")
-        mlflow.log_artifact("loss_curve.png")
+
+        # ✅ NEW WAY: Upload directly from memory
+        mlflow.log_figure(fig, "loss_curve.png")
+        
+        # Close the plot to free memory
+        plt.close(fig)
 
         # Log Model (Registering it)
         print("Logging model to MLflow...")
-        mlflow.pytorch.log_model(model, "model")
+        mlflow.pytorch.log_model(pytorch_model=model, name="model")
         print("Training Complete. Run 'mlflow ui' to view results.")
 
 if __name__ == "__main__":

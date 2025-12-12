@@ -25,7 +25,9 @@ COPY pyproject.toml uv.lock* README.md ./
 COPY mylib ./mylib
 
 # Install dependencies into the System Python (/usr/local)
-RUN uv pip install --system --no-cache .
+# RUN uv pip install --system --no-cache .
+RUN uv pip install --system --no-cache torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
 
 # ==========================================
 # Runtime Stage

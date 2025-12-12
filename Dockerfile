@@ -1,7 +1,7 @@
 # ==========================================
 # Base Stage
 # ==========================================
-FROM python:3.13-slim AS base
+FROM python:3.11-slim AS base
 
 # Prevent Python from writing .pyc files and set buffer settings
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -40,6 +40,9 @@ COPY mylib ./mylib
 COPY cli ./cli
 COPY api ./api
 COPY templates ./templates
+
+# Copy the serialized model and labels
+COPY production_models ./production_models
 
 # Expose the port
 EXPOSE 8000

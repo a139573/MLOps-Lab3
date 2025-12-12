@@ -72,7 +72,7 @@ jobs:
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
           # Careful with the URL syntax here
-          git remote add huggingface https://${HF_USERNAME}:${HF_TOKEN}@huggingface.co/spaces/${HF_USERNAME}/image_classification.git
+          git remote add huggingface https://${HF_USERNAME}:${HF_TOKEN}@huggingface.co/spaces/${HF_USERNAME}/MLOps-Lab3.git
 
       # 3. Push 'hf-space' content to Hugging Face's 'main'
       - name: Push hf-space branch to Hugging Face

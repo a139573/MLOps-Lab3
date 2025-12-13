@@ -110,6 +110,19 @@ def predict_img_class(image_bytes: bytes):
     except Exception as e:
         print(f"Inference Error: {e}")
         return "Error during prediction"
+        
+
+def resize_image(image_bytes: bytes, width: int, height: int) -> bytes:
+    """
+    Resize an input image to the given width and height.
+    Returns the resized image as bytes (JPEG format).
+    """
+    with Image.open(BytesIO(image_bytes)) as img:
+        resized = img.resize((width, height))
+        output = BytesIO()
+        resized.save(output, format="JPEG")
+        return output.getvalue()
+
 
 
 if __name__ == "__main__":

@@ -5,70 +5,73 @@ import mlflow
 from mlflow.tracking import MlflowClient
 
 # --- CONFIGURATION ---
-EXPERIMENT_NAME = "Oxford_Pets_Transfer_Learning"
+MODEL_REGISTRY_NAME = "OxfordPetsMobileNet" # Must match the name in train.py
 EXPORT_DIR = "production_models"
 ONNX_MODEL_NAME = "model.onnx"
-JSON_LABELS_NAME = "class_labels.json"
 
 def export_best_model():
-    # 1. Setup Client
     client = MlflowClient()
+
+    # 1. Search for all versions of this registered model
+    print(f"Searching for registered versions of '{MODEL_REGISTRY_NAME}'...")
     
-    # 2. Get Experiment
-    experiment = client.get_experiment_by_name(EXPERIMENT_NAME)
-    if experiment is None:
-        print(f"Error: Experiment '{EXPERIMENT_NAME}' not found. Run train.py first.")
+    # Filter by name as requested in instructions
+    versions = client.search_model_versions(f"name='{MODEL_REGISTRY_NAME}'")
+
+    if not versions:
+        print(f"Error: No registered models found with name '{MODEL_REGISTRY_NAME}'.")
+        print("Did you add 'registered_model_name' to your train.py?")
         return
 
-    # 3. Search Runs to find the Best Model
-    # We sort by 'metrics.val_acc' in Descending order (DESC) to get the highest accuracy first
-    print(f"Searching for the best run in experiment '{EXPERIMENT_NAME}'...")
-    runs = client.search_runs(
-        experiment_ids=[experiment.experiment_id],
-        order_by=["metrics.val_acc DESC"],
-        max_results=1
-    )
+    print(f"Found {len(versions)} versions. Comparing metrics...")
 
-    if not runs:
-        print("Error: No runs found.")
-        return
+    best_run_id = None
+    best_acc = -1.0
+    best_version_num = None
 
-    best_run = runs[0]
-    best_run_id = best_run.info.run_id
-    best_acc = best_run.data.metrics.get("val_acc", 0.0)
-    
+    # 2. Iterate through versions to find the one with the highest accuracy
+    # Note: ModelVersion objects don't hold metrics, so we must fetch the Run for each version.
+    for version in versions:
+        run_id = version.run_id
+        run = client.get_run(run_id)
+        
+        # Get accuracy (default to 0 if not found)
+        acc = run.data.metrics.get("val_acc", 0.0)
+        
+        print(f" - Version {version.version} (Run {run_id[:8]}): Accuracy = {acc:.4f}")
+        
+        if acc > best_acc:
+            best_acc = acc
+            best_run_id = run_id
+            best_version_num = version.version
+
+    print(f"\n🏆 Best Model: Version {best_version_num} with Accuracy: {best_acc:.4f}")
     print(f"✅ Best Run ID: {best_run_id}")
-    print(f"🏆 Validation Accuracy: {best_acc:.4f}")
 
-    # 4. Create Output Directory
+    # 3. Create Output Directory
     os.makedirs(EXPORT_DIR, exist_ok=True)
 
-    # 5. Download Class Labels (Artifact)
-    # The training script saved 'class_labels.json' into the run artifacts. We retrieve it now.
+    # 4. Download Class Labels (Artifact from the best run)
     print("Downloading class labels...")
-    local_path = client.download_artifacts(best_run_id, "class_labels.json", dst_path=EXPORT_DIR)
-    
-    # Verify we can read it
-    with open(local_path, 'r') as f:
-        labels = json.load(f)
-    print(f"Loaded {len(labels)} class labels.")
+    try:
+        local_path = client.download_artifacts(best_run_id, "class_labels.json", dst_path=EXPORT_DIR)
+        with open(local_path, 'r') as f:
+            labels = json.load(f)
+        print(f"Loaded {len(labels)} class labels.")
+    except Exception as e:
+        print(f"Warning: Could not download labels. {e}")
 
-    # 6. Load the Best Model
-    print("Loading PyTorch model...")
+    # 5. Load the Best Model (using the run URI)
+    print(f"Loading PyTorch model from run {best_run_id}...")
     model_uri = f"runs:/{best_run_id}/model"
     model = mlflow.pytorch.load_model(model_uri)
     
-    # Prepare for ONNX Export
-    # Render is CPU-only, so we ensure the model is on CPU
     model.to("cpu")
     model.eval()
 
-    # 7. Serialize to ONNX
+    # 6. Serialize to ONNX
     print(f"Exporting model to ONNX format (Opset 18)...")
-    
-    # Create a dummy input that matches the input shape (Batch=1, Channels=3, H=224, W=224)
     dummy_input = torch.randn(1, 3, 224, 224)
-    
     onnx_path = os.path.join(EXPORT_DIR, ONNX_MODEL_NAME)
     
     torch.onnx.export(
@@ -76,18 +79,14 @@ def export_best_model():
         dummy_input,
         onnx_path,
         export_params=True,
-        opset_version=18,  # Standard version
+        opset_version=18,
         do_constant_folding=True,
         input_names=['input'],
         output_names=['output'],
-        dynamic_axes={
-            'input': {0: 'batch_size'}, # Allow variable batch sizes
-            'output': {0: 'batch_size'}
-        }
+        dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}}
     )
     
     print(f"🎉 Success! Model saved to: {onnx_path}")
-    print(f"📂 Class labels saved to: {local_path}")
 
 if __name__ == "__main__":
     export_best_model()

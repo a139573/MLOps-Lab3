@@ -11,12 +11,18 @@ import mlflow.pytorch
 import matplotlib.pyplot as plt
 
 # --- 1. CONFIGURATION & REPRODUCIBILITY ---
-SEED = 123
-BATCH_SIZE = 32
-EPOCHS = 5  # Small number of epochs as per instructions
-LEARNING_RATE = 0.001
+#SEED = 123
+#BATCH_SIZE = 32
+#EPOCHS = 5  # Small number of epochs as per instructions
+#LEARNING_RATE = 0.001
+DEFAULT_CONFIG = {
+    "batch_size": 32,
+    "epochs": 5,
+    "lr": 0.001,
+    "seed": 123
+}
 EXPERIMENT_NAME = "Oxford_Pets_Transfer_Learning"
-RUN_NAME = f"MobileNetV2_BS{BATCH_SIZE}_LR{LEARNING_RATE}"
+# RUN_NAME = f"MobileNetV2_BS{BATCH_SIZE}_LR{LEARNING_RATE}"
 
 def set_seed(seed):
     random.seed(seed)
@@ -25,12 +31,12 @@ def set_seed(seed):
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
 
-set_seed(SEED)
+# set_seed(SEED)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
 # --- 2. DATA PREPARATION ---
-def prepare_data():
+def prepare_data(batch_size, seed):
     print("Downloading and preparing data...")
     
     # Define transforms (Resize to 224x224 as required)
@@ -51,10 +57,10 @@ def prepare_data():
     # Split 80/20 Train/Val
     train_size = int(0.8 * len(full_dataset))
     val_size = len(full_dataset) - train_size
-    train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size], generator=torch.Generator().manual_seed(SEED))
+    train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size], generator=torch.Generator().manual_seed(seed))
 
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     
     return train_loader, val_loader, class_labels
 
@@ -76,24 +82,30 @@ def build_model(num_classes):
     
     return model.to(device)
 
-# --- 4. TRAINING LOOP WITH MLFLOW ---
-def train_model():
+
+
+def train_model(batch_size, learning_rate, epochs, seed=123):
+    # Update global device/seed just in case
+    set_seed(seed)
+    
+    # Create a unique run name based on params
+    run_name = f"MobNet_BS{batch_size}_LR{learning_rate}_EP{epochs}"
+    
     # 4.1 Setup MLflow Experiment
     mlflow.set_experiment(EXPERIMENT_NAME)
     
-    with mlflow.start_run(run_name=RUN_NAME):
+    with mlflow.start_run(run_name=run_name):
         # Log Parameters
         mlflow.log_params({
             "model": "MobileNetV2",
-            "epochs": EPOCHS,
-            "batch_size": BATCH_SIZE,
-            "learning_rate": LEARNING_RATE,
-            "seed": SEED,
-            "dataset": "OxfordIIITPet"
+            "epochs": epochs,
+            "batch_size": batch_size,
+            "learning_rate": learning_rate,
+            "seed": seed
         })
 
         # Load Data
-        train_loader, val_loader, class_labels = prepare_data()
+        train_loader, val_loader, class_labels = prepare_data(batch_size, seed)
         
         # Save Class Labels as JSON artifact
         labels_path = "class_labels.json"
@@ -106,7 +118,7 @@ def train_model():
         
         # Loss and Optimizer
         criterion = nn.CrossEntropyLoss()
-        optimizer = optim.Adam(model.classifier.parameters(), lr=LEARNING_RATE)
+        optimizer = optim.Adam(model.classifier.parameters(), lr=learning_rate)
 
         # Lists for plotting
         train_loss_history = []
@@ -115,7 +127,7 @@ def train_model():
         val_acc_history = []
 
         print("Starting training...")
-        for epoch in range(EPOCHS):
+        for epoch in range(epochs):
             # --- Training Phase ---
             model.train()
             running_loss = 0.0
@@ -162,7 +174,7 @@ def train_model():
             val_loss_history.append(epoch_val_loss)
             val_acc_history.append(epoch_val_acc)
 
-            print(f"Epoch [{epoch+1}/{EPOCHS}] "
+            print(f"Epoch [{epoch+1}/{epochs}] "
                   f"Train Loss: {epoch_train_loss:.4f} Acc: {epoch_train_acc:.4f} | "
                   f"Val Loss: {epoch_val_loss:.4f} Acc: {epoch_val_acc:.4f}")
 
@@ -194,4 +206,10 @@ def train_model():
         print("Training Complete. Run 'mlflow ui' to view results.")
 
 if __name__ == "__main__":
-    train_model()
+    # If run directly, use defaults
+    train_model(
+        batch_size=DEFAULT_CONFIG["batch_size"],
+        learning_rate=DEFAULT_CONFIG["lr"],
+        epochs=DEFAULT_CONFIG["epochs"],
+        seed=DEFAULT_CONFIG["seed"]
+    )

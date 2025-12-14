@@ -51,7 +51,7 @@ def export_best_model():
     # 3. Create Output Directory
     os.makedirs(EXPORT_DIR, exist_ok=True)
 
-    # 4. Download Class Labels (Artifact from the best run)
+    # 4. Download Class Labels (Artifact from the best run)º
     print("Downloading class labels...")
     try:
         local_path = client.download_artifacts(best_run_id, "class_labels.json", dst_path=EXPORT_DIR)
@@ -66,7 +66,7 @@ def export_best_model():
     model_uri = f"runs:/{best_run_id}/model"
     model = mlflow.pytorch.load_model(model_uri)
     
-    model.to("cpu")
+    model.to("cpu") # Render doesn't support CUDA 
     model.eval()
 
     # 6. Serialize to ONNX

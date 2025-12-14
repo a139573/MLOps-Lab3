@@ -41,8 +41,8 @@ class AnimalClassifier:
         
         # Convert to Numpy & Normalize (ImageNet stats)
         img_data = np.array(image).astype('float32') / 255.0
-        mean = np.array([0.485, 0.456, 0.406])
-        std = np.array([0.229, 0.224, 0.225])
+        mean = np.array([0.485, 0.456, 0.406], dtype='float32')
+        std = np.array([0.229, 0.224, 0.225], dtype='np.float32')
         img_data = (img_data - mean) / std
         
         # Transpose to (Channels, Height, Width) & Add Batch Dimension

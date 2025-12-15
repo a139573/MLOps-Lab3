@@ -55,10 +55,10 @@ def export_best_model():
     print("Downloading class labels...")
     try:
         local_path = client.download_artifacts(best_run_id, "class_labels.json", dst_path=EXPORT_DIR)
-        with open(local_path, 'r') as f:
+        with open(local_path, 'r', encoding='utf-8') as f:
             labels = json.load(f)
         print(f"Loaded {len(labels)} class labels.")
-    except Exception as e:
+    except OSError as e:
         print(f"Warning: Could not download labels. {e}")
 
     # 5. Load the Best Model (using the run URI)
@@ -70,7 +70,7 @@ def export_best_model():
     model.eval()
 
     # 6. Serialize to ONNX
-    print(f"Exporting model to ONNX format (Opset 18)...")
+    print("Exporting model to ONNX format (Opset 18)...")
     dummy_input = torch.randn(1, 3, 224, 224)
     onnx_path = os.path.join(EXPORT_DIR, ONNX_MODEL_NAME)
     

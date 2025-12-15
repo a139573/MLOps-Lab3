@@ -89,7 +89,7 @@ def train_model(batch_size, learning_rate, epochs, seed=123):
         
         # Save labels
         labels_path = "class_labels.json"
-        with open(labels_path, "w") as f:
+        with open(labels_path, "w", encoding='utf-8') as f:
             json.dump(class_labels, f)
         mlflow.log_artifact(labels_path)
 

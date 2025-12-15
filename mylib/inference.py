@@ -25,7 +25,7 @@ class AnimalClassifier:
         )
         
         # Load Labels
-        with open(labels_path, 'r') as f:
+        with open(labels_path, 'r', encoding='utf-8') as f: # Added encoding
             self.labels = json.load(f)
             
         # --- INSTRUCTION: Obtain the session name ---
@@ -98,8 +98,8 @@ if __name__ == "__main__":
     # Instantiate Wrapper
     classifier = AnimalClassifier(MODEL_PATH, LABELS_PATH)
 
-    with open(image_path, "rb") as f:
-        img_bytes = f.read()
+    with open(image_path, "rb") as img_file: # Renamed variable 'f' to 'img_file'
+        img_bytes = img_file.read()
 
     # Predict
     result = classifier.predict(img_bytes)

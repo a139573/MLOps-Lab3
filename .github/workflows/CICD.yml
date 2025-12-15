@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  # JOB 1: Deploy Backend to Render (from 'main' branch)
+  # JOB 1: Deploy Backend to Render
   deploy-render:
     runs-on: ubuntu-latest
     env:
@@ -15,6 +15,25 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      # --- NEW: LIGHTWEIGHT TEST ---
+      # We just need to check if the files exist. 
+      # Since your test_artifacts.py only imports 'os' and 'pytest', 
+      # we don't need to install heavy libraries like torch.
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install Pytest
+        run: uv pip install pytest
+
+      - name: Test Artifacts Existence
+        # This will fail if production_models/model.onnx is missing
+        run: uv run pytest tests/test_artifacts.py
+      # -----------------------------
 
       # 1. Setup Docker tools
       - name: Set up QEMU
@@ -31,6 +50,8 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       # 3. Build and Push
+      # Since 'production_models' is in your git repo, the checkout step above 
+      # downloaded it, and this build step will copy it into the container.
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
@@ -42,7 +63,6 @@ jobs:
           cache-to: type=inline
 
       # 4. Trigger Render Deploy
-      # REPLACE 'srv-xxxxx' WITH YOUR ACTUAL SERVICE ID from the Render Deploy Hook URL
       - name: Trigger Render Deploy
         run: curl -X POST "https://api.render.com/deploy/srv-d4ko180gjchc73aa3vs0?key=${{ secrets.RENDER_DEPLOY_HOOK_KEY }}"
 

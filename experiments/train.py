@@ -15,12 +15,13 @@ DEFAULT_CONFIG = {
     "batch_size": 32,
     "epochs": 5,
     "lr": 0.001,
-    "seed": 123
+    "seed": 123,
+    "architecture": "mobilenet_v2" # Default
 }
 
-# Distinguish between the Experiment (project) and the Model (product)
 EXPERIMENT_NAME = "Oxford_Pets_Transfer_Learning"
-MODEL_REGISTRY_NAME = "OxfordPetsMobileNet"  # <--- MUST MATCH export_model.py
+# Generic name so we can compare different architectures in the same registry
+MODEL_REGISTRY_NAME = "OxfordPetsModel" 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
@@ -34,8 +35,7 @@ def set_seed(seed):
 
 # --- 2. DATA PREPARATION ---
 def prepare_data(batch_size, seed):
-    print("Downloading and preparing data...")
-    
+    # Standard ImageNet transforms work for ResNet, MobileNet, and ShuffleNet
     stats = ((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
@@ -55,30 +55,57 @@ def prepare_data(batch_size, seed):
     
     return train_loader, val_loader, class_labels
 
-# --- 3. MODEL SETUP ---
-def build_model(num_classes):
-    print("Building MobileNetV2 model...")
-    weights = models.MobileNet_V2_Weights.IMAGENET1K_V1
-    model = models.mobilenet_v2(weights=weights)
+# --- 3. MODEL SETUP (UPDATED) ---
+def build_model(num_classes, architecture):
+    print(f"Building model architecture: {architecture}...")
+    
+    if architecture == "mobilenet_v2":
+        weights = models.MobileNet_V2_Weights.IMAGENET1K_V1
+        model = models.mobilenet_v2(weights=weights)
+        # Freeze
+        for param in model.parameters():
+            param.requires_grad = False
+        # Replace Head (MobileNet uses 'classifier')
+        in_features = model.classifier[1].in_features
+        model.classifier[1] = nn.Linear(in_features, num_classes)
 
-    for param in model.parameters():
-        param.requires_grad = False
+    elif architecture == "resnet18":
+        weights = models.ResNet18_Weights.IMAGENET1K_V1
+        model = models.resnet18(weights=weights)
+        # Freeze
+        for param in model.parameters():
+            param.requires_grad = False
+        # Replace Head (ResNet uses 'fc')
+        in_features = model.fc.in_features
+        model.fc = nn.Linear(in_features, num_classes)
 
-    in_features = model.classifier[1].in_features
-    model.classifier[1] = nn.Linear(in_features, num_classes)
+    elif architecture == "shufflenet_v2":
+        weights = models.ShuffleNet_V2_X1_0_Weights.IMAGENET1K_V1
+        model = models.shufflenet_v2_x1_0(weights=weights)
+        # Freeze
+        for param in model.parameters():
+            param.requires_grad = False
+        # Replace Head (ShuffleNet uses 'fc')
+        in_features = model.fc.in_features
+        model.fc = nn.Linear(in_features, num_classes)
+        
+    else:
+        raise ValueError(f"Unknown architecture: {architecture}")
     
     return model.to(device)
 
 # --- 4. TRAINING LOOP ---
-def train_model(batch_size, learning_rate, epochs, seed=123):
+def train_model(architecture, batch_size, learning_rate, epochs, seed=123):
     set_seed(seed)
-    run_name = f"MobNet_BS{batch_size}_LR{learning_rate}_EP{epochs}"
+    
+    # Include architecture in run name for easy ID in MLflow UI
+    run_name = f"{architecture}_BS{batch_size}_LR{learning_rate}"
     
     mlflow.set_experiment(EXPERIMENT_NAME)
     
     with mlflow.start_run(run_name=run_name):
         mlflow.log_params({
-            "model": "MobileNetV2",
+            "model_architecture": architecture,
             "epochs": epochs,
             "batch_size": batch_size,
             "learning_rate": learning_rate,
@@ -87,15 +114,23 @@ def train_model(batch_size, learning_rate, epochs, seed=123):
 
         train_loader, val_loader, class_labels = prepare_data(batch_size, seed)
         
-        # Save labels
         labels_path = "class_labels.json"
         with open(labels_path, "w", encoding='utf-8') as f:
             json.dump(class_labels, f)
         mlflow.log_artifact(labels_path)
 
-        model = build_model(len(class_labels))
+        # Pass architecture to builder
+        model = build_model(len(class_labels), architecture)
+        
         criterion = nn.CrossEntropyLoss()
-        optimizer = optim.Adam(model.classifier.parameters(), lr=learning_rate)
+        
+        # Handle optimizer params based on architecture head name
+        if architecture == "mobilenet_v2":
+            params_to_optimize = model.classifier.parameters()
+        else:
+            params_to_optimize = model.fc.parameters()
+            
+        optimizer = optim.Adam(params_to_optimize, lr=learning_rate)
 
         train_loss_history = []
         val_loss_history = []
@@ -161,12 +196,11 @@ def train_model(batch_size, learning_rate, epochs, seed=123):
         mlflow.log_figure(fig, "loss_curve.png")
         plt.close(fig)
 
-        # --- KEY CHANGE HERE ---
         print(f"Registering model under name: {MODEL_REGISTRY_NAME}")
         mlflow.pytorch.log_model(
             pytorch_model=model, 
             name="model",
-            registered_model_name=MODEL_REGISTRY_NAME  # Using the specific model name
+            registered_model_name=MODEL_REGISTRY_NAME
         )
         print("Training Complete.")
 
@@ -175,5 +209,6 @@ if __name__ == "__main__":
         batch_size=DEFAULT_CONFIG["batch_size"],
         learning_rate=DEFAULT_CONFIG["lr"],
         epochs=DEFAULT_CONFIG["epochs"],
+        architecture=DEFAULT_CONFIG["architecture"],
         seed=DEFAULT_CONFIG["seed"]
     )

@@ -5,7 +5,7 @@ import mlflow
 from mlflow.tracking import MlflowClient
 
 # --- CONFIGURATION ---
-MODEL_REGISTRY_NAME = "OxfordPetsMobileNet" # Must match the name in train.py
+MODEL_REGISTRY_NAME = "OxfordPetsModel" # Matches new train.py
 EXPORT_DIR = "production_models"
 ONNX_MODEL_NAME = "model.onnx"
 

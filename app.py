@@ -50,8 +50,7 @@ iface = gr.Interface(
     inputs=gr.Image(type="filepath", label="Upload Animal Image"),
     outputs=gr.Textbox(label="Result"),
     title=title,
-    description=description,
-    theme="default"
+    description=description
 )
 
 if __name__ == "__main__":

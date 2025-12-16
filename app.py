@@ -4,8 +4,7 @@ import os
 
 # --- CONFIGURATION ---
 # Try to get the URL from the Environment (Best Practice), otherwise fallback to default
-# REPLACE 'https://your-lab3-service.onrender.com' with your actual Lab 3 Render URL
-RENDER_API_URL = os.getenv("API_URL", "https://your-lab3-service.onrender.com")
+RENDER_API_URL = os.getenv("API_URL", "https://mlops-lab2-latest-r35q.onrender.com")
 
 def predict_animal(image_path):
     """
